@@ -1,7 +1,8 @@
+/*
+TS based on react chart draw aggtrades and order info
+*/
 'use client'
-// import React from "react";
 import React, { useEffect, useState } from 'react';
-// import ReactDOM from "react-dom";
 import { format } from "d3-format";
 import { timeFormat } from "d3-time-format";
 import {
@@ -12,7 +13,7 @@ import {
   ChartCanvas,
   CurrentCoordinate,
   BarSeries,
-  CandlestickSeries,
+  // CandlestickSeries,
   ElderRaySeries,
   LineSeries,
   MovingAverageTooltip,
@@ -26,10 +27,14 @@ import {
   MouseCoordinateX,
   MouseCoordinateY,
   ZoomButtons,
-  withDeviceRatio,
-  withSize
+  ScatterSeries,
+  CircleMarker,
+  Square,
+  Triangle,
+  // withDeviceRatio,
+  // withSize
 } from "react-financial-charts";
-import { initialData} from "./data";
+import { initialData } from "./data";
 
 // interface ChartData {
 // 	date: string;
@@ -42,17 +47,19 @@ import { initialData} from "./data";
 
 interface ChartData {
   _id: string;
-  time: number; 
+  type: string;
+  time: number;
   price: number;
   quntity: number;
   is_maker: boolean;
+  source: string;
 }
 
 interface Props {
   apiUrl?: string; // URL to fetch chart data from
 }
 
-const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
+const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   // const [chartData, setChartData] = useState({});
@@ -68,7 +75,7 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
           throw new Error(`Error: ${response.status}`);
         }
         const data = await response.json() as ChartData[];
-        setChartData(data);
+        setChartData(data.sort((a, b) => (a.time - b.time)));
       } catch (error) {
         console.error('Error fetching chart data:', error);
       } finally {
@@ -89,18 +96,18 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
   const ema12 = ema()
     .id(1)
     .options({ windowSize: 12 })
-    .merge((d:any, c:number) => {
+    .merge((d: any, c: number) => {
       d.ema12 = c;
     })
-    .accessor((d:any) => d.ema12);
+    .accessor((d: any) => d.ema12);
 
   const ema26 = ema()
     .id(2)
     .options({ windowSize: 26 })
-    .merge((d:any, c:number) => {
+    .merge((d: any, c: number) => {
       d.ema26 = c;
     })
-    .accessor((d:any) => d.ema26);
+    .accessor((d: any) => d.ema26);
 
   const elder = elderRay();
 
@@ -116,9 +123,9 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
   const gridHeight = height - margin.top - margin.bottom;
 
   const elderRayHeight = 100;
-  const elderRayOrigin = (_:any, h:number) => [0, h - elderRayHeight];
+  const elderRayOrigin = (_: any, h: number) => [0, h - elderRayHeight];
   const barChartHeight = gridHeight / 4;
-  const barChartOrigin = (_:any, h:number) => [0, h - barChartHeight - elderRayHeight];
+  const barChartOrigin = (_: any, h: number) => [0, h - barChartHeight - elderRayHeight];
   const chartHeight = gridHeight - elderRayHeight;
   const yExtents = (data: ChartData): [number, number] => {
     return [data.price, data.price];
@@ -129,30 +136,43 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
   const barChartExtents = (data: ChartData): number => {
     return data.quntity;
   };
-  
+
   const candleChartExtents = (data: ChartData): [number, number] => {
     return [data.price, data.price];
   };
 
   const priceExtents = (data: ChartData): number => {
-    return data.price;
+    if (data.source == 'aggtrade') {
+      return data.price;
+    } else {
+      return NaN;
+    }
   };
-  
+
+  const OrderExtents = (data: ChartData): number => {
+    /// return data.price only when data.source is order
+    if (data.source == 'order') {
+      return data.price;
+    } else {
+      return NaN;
+    }
+  }
+
   const yEdgeIndicator = (data: ChartData): number => {
     return data.price;
   };
-  
+
   const volumeColor = (data: ChartData): string => {
     // return data.close > data.open
     //   ? "rgba(38, 166, 154, 0.3)"
     //   : "rgba(239, 83, 80, 0.3)";
     return "rgba(38, 166, 154, 0.3)";
   };
-  
+
   const volumeSeries = (data: ChartData): number => {
     return data.quntity;
   };
-  
+
   const openCloseColor = (data: ChartData): string => {
     // return data.close > data.open ? "#26a69a" : "#ef5350";
     return "#26a69a";
@@ -195,8 +215,16 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
           fillStyle={ema12.stroke()}
         /> */}
         <LineSeries yAccessor={priceExtents} strokeStyle={"#484e5b"} />
+        {/* <ScatterSeries 
+          yAccessor={priceExtents} 
+          marker={Square}
+          markerProps={{ width: 6, stroke: "#ff7f0e", fill: "#ff7f0e" }} />     */}
+        <ScatterSeries 
+          yAccessor={priceExtents} 
+          marker={Triangle}
+          markerProps={{ width: 6, direction:"up", stroke: "#ff7f0e", fill: "#ff7f0e" }} />
         <CurrentCoordinate
-          yAccessor={priceExtents}
+          yAccessor={OrderExtents}
           fillStyle={"#484e5b"}
         />
         <MouseCoordinateY
@@ -253,7 +281,7 @@ const ReactChart: React.FC<Props> = ({apiUrl='/api/db?n=300'}) => {
         <SingleValueTooltip
           yAccessor={elder.accessor()}
           yLabel="Elder Ray"
-          yDisplayFormat={(d:any) =>
+          yDisplayFormat={(d: any) =>
             `${pricesDisplayFormat(d.bullPower)}, ${pricesDisplayFormat(
               d.bearPower
             )}`

@@ -1,4 +1,13 @@
+import { Chart } from "react-financial-charts";
 
+export interface ChartData {
+	date: string;
+	open: number;
+	low: number;
+	high: number;
+	close: number;
+	volume: number;
+}
 
 export let initialData:ChartData[] = [
 	{

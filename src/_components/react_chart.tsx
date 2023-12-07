@@ -29,7 +29,7 @@ import {
   withDeviceRatio,
   withSize
 } from "react-financial-charts";
-import { initialData} from "./data";
+import {ChartData, initialData} from "./data";
 
 // interface ChartData {
 // 	date: string;
@@ -40,13 +40,13 @@ import { initialData} from "./data";
 // 	volume: number;
 //   }
 
-interface ChartData {
-  _id: string;
-  time: number; 
-  price: number;
-  quntity: number;
-  is_maker: boolean;
-}
+// interface ChartData {
+//   _id: string;
+//   time: number; 
+//   price: number;
+//   quntity: number;
+//   is_maker: boolean;
+// }
 
 const ReactChart = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);

@@ -3,9 +3,9 @@
 // 		<div>hello</div>
 // 	)
 // }
-import ReactChart from '../../_components//price_chart';
+import ReactChart from '../../_components/trade_chart';
 export default function Page() {
 	return <div>
-		<ReactChart />
+		<ReactChart apiUrl='/api/db/aggtrades?n=1500'/>
 	</div>
   }

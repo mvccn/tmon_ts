@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 
 const AggTradesSchema = new mongoose.Schema({
-    time: Number,
-    value: Number,
-    price: Number,
-    quntity: Number,
-    is_maker: Boolean,
+    // time: Number,
+    // value: Number,
+    // price: Number,
+    // quntity: Number,
+    // is_maker: Boolean,
     // Add other fields as needed
 });
 
