@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <canvas id="myCanvas" width="400" height="400"></canvas>
+    <script>
+      const canvas = document.getElementById('myCanvas');
+      const context = canvas.getContext('2d');
+
+      const lineGenerator = d3.line()
+        .x(d => d.x)
+        .y(d => d.y)
+        .context(context);
+
+      const data = [{ x: 10, y: 20 }, { x: 100, y: 200 }, { x: 200, y: 50 }];
+
+      context.beginPath();
+      lineGenerator(data);
+      context.strokeStyle = 'steelblue';
+      context.lineWidth = 2;
+      context.stroke();
+    </script>
+</body>
+</html>

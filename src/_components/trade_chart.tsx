@@ -5,6 +5,7 @@ TS based on react chart draw aggtrades and order info
 import React, { useEffect, useState } from 'react';
 import { format } from "d3-format";
 import { timeFormat } from "d3-time-format";
+import { scaleTime } from "d3-scale";
 import {
   elderRay,
   ema,
@@ -13,7 +14,7 @@ import {
   ChartCanvas,
   CurrentCoordinate,
   BarSeries,
-  // CandlestickSeries,
+  CandlestickSeries,
   ElderRaySeries,
   LineSeries,
   MovingAverageTooltip,
@@ -34,33 +35,26 @@ import {
   // withDeviceRatio,
   // withSize
 } from "react-financial-charts";
-import { initialData } from "./data";
 
-// interface ChartData {
-// 	date: string;
-// 	open: number;
-// 	low: number;
-// 	high: number;
-// 	close: number;
-// 	volume: number;
-//   }
+import { OrderSeries } from './series/OrderSeries';
+import { OHLCSeries } from './series/OHLCSeries';
 
-interface ChartData {
-  _id: string;
-  type: string;
-  time: number;
-  price: number;
-  quntity: number;
-  is_maker: boolean;
-  source: string;
-}
+// interface DataPoint {
+//   open: number;
+//   high: number;
+//   low: number;
+//   close: number;
+//   quantity: number;
+//   time: number;
+// }
+
 
 interface Props {
   apiUrl?: string; // URL to fetch chart data from
 }
 
 const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
-  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [chartData, setChartData] = useState<DataPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   // const [chartData, setChartData] = useState({});
   // const [loading, setLoading] = useState(true);
@@ -74,7 +68,7 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
         }
-        const data = await response.json() as ChartData[];
+        const data = await response.json() as DataPoint[];
         setChartData(data.sort((a, b) => (a.time - b.time)));
       } catch (error) {
         console.error('Error fetching chart data:', error);
@@ -89,6 +83,16 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
   const ScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor(
     (d) => new Date(d.time)
   );
+  const { data, xScale, xAccessor, displayXAccessor } = ScaleProvider(
+    chartData
+  );
+  // const data = chartData;
+  // const xScale=scaleTime()
+  // const xAccessor = (d: ChartData): number => {
+  //   return d.time;
+  // };
+
+
   const height = 700;
   const width = 900;
   const margin = { left: 0, right: 48, top: 0, bottom: 24 };
@@ -112,9 +116,7 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
   const elder = elderRay();
 
   const calculatedData = elder(ema26(ema12(chartData)));
-  const { data, xScale, xAccessor, displayXAccessor } = ScaleProvider(
-    chartData
-  );
+
   const pricesDisplayFormat = format(".2f");
   const max = xAccessor(data[data.length - 1]);
   const min = xAccessor(data[Math.max(0, data.length - 100)]);
@@ -127,57 +129,54 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
   const barChartHeight = gridHeight / 4;
   const barChartOrigin = (_: any, h: number) => [0, h - barChartHeight - elderRayHeight];
   const chartHeight = gridHeight - elderRayHeight;
-  const yExtents = (data: ChartData): [number, number] => {
-    return [data.price, data.price];
-  };
-  const dateTimeFormat = "%d %b";
-  const timeDisplayFormat = timeFormat(dateTimeFormat);
 
-  const barChartExtents = (data: ChartData): number => {
-    return data.quntity;
+  const dateTimeFormat = "%b%d %H:%M:%S";
+  // const timeDisplayFormat = timeFormat(dateTimeFormat);
+  /*create a customized timeformat to display millisecond */
+  const timeFormatwithMilli = (date: Date): string => {
+    const format = timeFormat("%b%d %H:%M:%S"); // Standard date-time format
+    const milliseconds = date.getMilliseconds();
+    return format(date) + "." + String(milliseconds).padStart(3, '0'); // Adding milliseconds
   };
-
-  const candleChartExtents = (data: ChartData): [number, number] => {
-    return [data.price, data.price];
-  };
-
-  const priceExtents = (data: ChartData): number => {
-    if (data.source == 'aggtrade') {
-      return data.price;
-    } else {
-      return NaN;
-    }
+  const barChartExtents = (data: DataPoint): number => {
+    return data.ohlc.quantity;
   };
 
-  const OrderExtents = (data: ChartData): number => {
-    /// return data.price only when data.source is order
-    if (data.source == 'order') {
-      return data.price;
-    } else {
-      return NaN;
-    }
-  }
-
-  const yEdgeIndicator = (data: ChartData): number => {
-    return data.price;
+  const candleChartExtents = (data: DataPoint): [number, number] => {
+    return [data.ohlc.high, data.ohlc.low];
   };
 
-  const volumeColor = (data: ChartData): string => {
-    // return data.close > data.open
-    //   ? "rgba(38, 166, 154, 0.3)"
-    //   : "rgba(239, 83, 80, 0.3)";
-    return "rgba(38, 166, 154, 0.3)";
+  const yEdgeIndicator = (data: DataPoint): number => {
+    return data.ohlc.close;
   };
 
-  const volumeSeries = (data: ChartData): number => {
-    return data.quntity;
+  const volumeColor = (data: DataPoint): string => {
+    return data.ohlc.close > data.ohlc.open
+      ? "rgba(38, 166, 154, 0.3)"
+      : "rgba(239, 83, 80, 0.3)";
+    // return "rgba(38, 166, 154, 0.3)";
   };
 
-  const openCloseColor = (data: ChartData): string => {
-    // return data.close > data.open ? "#26a69a" : "#ef5350";
-    return "#26a69a";
+  // const orderExtents = (data: DataPoint): [number, number] | undefined => {
+  //   if (data.order) {
+  //     return undefined;
+  //   } else {
+  //     return [data.order?[0]?.price, data.order[0]?.price];
+  //   }
+  // };
+
+  // const buysellShape = (data: DataPoint): string => {
+  //   // if data.
+  // }; 
+
+  const volumeSeries = (data: DataPoint): number => {
+    return data.ohlc.quantity || 0;
   };
 
+  const openCloseColor = (data: DataPoint): string => {
+    return data.ohlc.close > data.ohlc.open ? "#26a69a" : "#ef5350";
+    // return "#26a69a";
+  };
   return (
     <ChartCanvas
       height={height}
@@ -203,30 +202,17 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
       <Chart id={3} height={chartHeight} yExtents={candleChartExtents}>
         <XAxis showGridLines showTickLabel={false} />
         <YAxis showGridLines tickFormat={pricesDisplayFormat} />
-        {/* <CandlestickSeries />
-        <LineSeries yAccessor={ema26.accessor()} strokeStyle={ema26.stroke()} />
-        <CurrentCoordinate
-          yAccessor={ema26.accessor()}
-          fillStyle={ema26.stroke()}
-        />
-        <LineSeries yAccessor={ema12.accessor()} strokeStyle={ema12.stroke()} />
-        <CurrentCoordinate
-          yAccessor={ema12.accessor()}
-          fillStyle={ema12.stroke()}
-        /> */}
-        <LineSeries yAccessor={priceExtents} strokeStyle={"#484e5b"} />
-        {/* <ScatterSeries 
-          yAccessor={priceExtents} 
-          marker={Square}
-          markerProps={{ width: 6, stroke: "#ff7f0e", fill: "#ff7f0e" }} />     */}
-        <ScatterSeries 
-          yAccessor={priceExtents} 
-          marker={Triangle}
-          markerProps={{ width: 6, direction:"up", stroke: "#ff7f0e", fill: "#ff7f0e" }} />
-        <CurrentCoordinate
-          yAccessor={OrderExtents}
-          fillStyle={"#484e5b"}
-        />
+        <OHLCSeries width={3} />
+  
+        <OrderSeries
+            // yAccessor={(d) => d.order} 
+            marker = {Triangle}
+            markerProps = {{ width: 8, 
+                              direction:"top", 
+                              stroke: "#2ca02c",
+                              fill: "#2ca02c" }}  
+        /> 
+        {/* <OrderSeries yAccessor={(d) => d.order} /> */}
         <MouseCoordinateY
           rectWidth={margin.right}
           displayFormat={pricesDisplayFormat}
@@ -258,7 +244,7 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
         />
 
         <ZoomButtons />
-        <OHLCTooltip origin={[8, 16]} />
+        <OHLCTooltip origin={[8, 16]} accessor={(d) => { return d.ohlc }} />
       </Chart>
       <Chart
         id={4}
@@ -270,7 +256,7 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
         <XAxis showGridLines gridLinesStrokeStyle="#e0e3eb" />
         <YAxis ticks={4} tickFormat={pricesDisplayFormat} />
 
-        <MouseCoordinateX displayFormat={timeDisplayFormat} />
+        <MouseCoordinateX displayFormat={timeFormatwithMilli} />
         <MouseCoordinateY
           rectWidth={margin.right}
           displayFormat={pricesDisplayFormat}
@@ -293,5 +279,5 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
     </ChartCanvas>
   );
 };
-export default ReactChart;
-// ReactDOM.render(<App />, document.getElementById("container"));
+
+export default ReactChart; 

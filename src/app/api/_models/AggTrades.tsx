@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
-const AggTradesSchema = new mongoose.Schema({
-    // time: Number,
-    // value: Number,
-    // price: Number,
-    // quntity: Number,
-    // is_maker: Boolean,
+const AggTradeSchema = new mongoose.Schema({
+    time: Number,
+    value: Number,
+    price: Number,
+    quantity: Number,
+    is_maker: Boolean,
     // Add other fields as needed
 });
 
-export default mongoose.models.AggTrades || mongoose.model('AggTrades', AggTradesSchema); //mongoose convert this to plural and lowercase
+export default mongoose.models.AggTrade || mongoose.model('AggTrade', AggTradeSchema); //mongoose convert this to plural and lowercase

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>D3 Triangles Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        /* You can add your CSS styles here */
+        #chart {
+            width: 500px;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <script>
+        // Your data
+        const data = [
+            { x: 50, y1: 100, y2: 150, y3: 200, y4: 250 },
+            { x: 60, y1: 90, y2: 150, y3: 200, y4: 250 },
+            // Add more data points here
+        ];
+
+        // SVG dimensions
+        const svgWidth = 500, svgHeight = 300;
+
+        // Create SVG element
+        const svg = d3.select("#chart").append("svg")
+            .attr("width", svgWidth)
+            .attr("height", svgHeight);
+
+        // Function to generate a path for a triangle at a specific point
+        function drawTriangle(x, y) {
+            const size = 10; // Size of the triangle
+            return `M ${x} ${y} L ${x - size / 2} ${y + size} L ${x + size / 2} ${y + size} Z`;
+        }
+
+        // Drawing triangles for each data point
+        data.forEach(d => {
+            svg.append("path")
+                .attr("d", drawTriangle(d.x, d.y1))
+                .attr("fill", "blue");
+
+            svg.append("path")
+                .attr("d", drawTriangle(d.x, d.y2))
+                .attr("fill", "red");
+
+            svg.append("path")
+                .attr("d", drawTriangle(d.x, d.y3))
+                .attr("fill", "green");
+
+            svg.append("path")
+                .attr("d", drawTriangle(d.x, d.y4))
+                .attr("fill", "orange");
+        });
+    </script>
+</body>
+</html>

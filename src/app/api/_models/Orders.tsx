@@ -5,7 +5,7 @@ const OrdersSchema = new mongoose.Schema({
     E: Number,
     order_id: String,
     price: Number,
-    quntity: Number,
+    quantity: Number,
     side: String,
     profit: Number,
     // Add other fields as needed
