@@ -20,10 +20,12 @@ interface OHLC{
 
 
 interface Order {
-    time: Number,
-    order_id: String,
-    price: Number,
-    quantity: Number,
-    side: String,
-    profit: Number,
+    time: number,
+    order_id: string,
+    price: number,
+    quantity: number,
+    side: string,
+    profit: number,
+    asset?: number, 
+    balance?: number, 
 }

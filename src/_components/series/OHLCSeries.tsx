@@ -2,6 +2,10 @@ import { functor, getAxisCanvas, GenericChartComponent, plotDataLengthBarWidth }
 import { group } from "d3-array";
 import { ScaleContinuousNumeric, ScaleTime } from "d3-scale";
 import * as React from "react";
+const UP_COLOR='#E21d68'; 
+const DOWN_COLOR= '#1db7e2';
+const UP_COLOR_LIGHT="rgba(38, 166, 154, 0.3)"
+const DOWN_COLOR_LIGHT="rgba(239, 83, 80, 0.3)"
 
 export interface ICandle {
     readonly x: number;
@@ -36,9 +40,10 @@ export class OHLCSeries extends React.Component<OHLCSeriesProps> {
     public static defaultProps = {
         candleStrokeWidth: 0.5,
         clip: true,
-        fill: (d: any) => (d.close > d.open ? "#26a69a" : "#ef5350"),
+        // fill: (d: any) => (d.close > d.open ? "#26a69a" : "#ef5350"),
+        fill: (d: any) => (d.close > d.open ? UP_COLOR_LIGHT : DOWN_COLOR_LIGHT),
         stroke: "none",
-        wickStroke: (d: any) => (d.close > d.open ? "#26a69a" : "#ef5350"),
+        wickStroke: (d: any) => (d.close > d.open ? UP_COLOR_LIGHT : DOWN_COLOR_LIGHT),
         width: plotDataLengthBarWidth,
         widthRatio: 0.8,
         yAccessor: (d: any) => (d.ohlc? d.ohlc: undefined),

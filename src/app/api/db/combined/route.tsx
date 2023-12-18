@@ -6,54 +6,74 @@ import Orders from "../../_models/Orders";
 function resampleToOHLC(
     data: PriceTimePoint[],
     intervalMs: number //100 ->100ms
-  ): Record<number, DataPoint> {
+): Record<number, DataPoint> {
     // let result: OHLC[] = [];
     let result: Record<number, DataPoint> = {};
     let groupedData: Record<number, { price: number[]; quantity: number[] }> = {};
-  
+
     // Step 1: Group data by 100ms intervals
     data.forEach((item) => {
-      // const date = new Date(item.time);
-      // item = item.toJSON();
-      const periodKey = Math.floor(item.time / intervalMs);
-      // const periodKeyString = periodKey.toString();
-      if (!groupedData[periodKey]) {
-        groupedData[periodKey] = { price: [], quantity: [] };
-      }
-      groupedData[periodKey].price.push(parseFloat(item.price));
-      groupedData[periodKey].quantity.push(parseFloat(item.quantity));
+        // const date = new Date(item.time);
+        // item = item.toJSON();
+        const periodKey = Math.floor(item.time / intervalMs);
+        // const periodKeyString = periodKey.toString();
+        if (!groupedData[periodKey]) {
+            groupedData[periodKey] = { price: [], quantity: [] };
+        }
+        groupedData[periodKey].price.push(parseFloat(item.price));
+        groupedData[periodKey].quantity.push(parseFloat(item.quantity));
     });
-  
+
     // Step 2: Calculate OHLC for each period
-    const keys = Object.keys(groupedData).map((k) => Number(k));
-    const min = Math.min(...keys);
-    const max = Math.max(...keys);
-    for (let i = min; i <= max; i++) {
-      let datapoint: DataPoint = {
-        time: i * intervalMs,
-        ohlc: {
-          open: NaN,
-          high: NaN,
-          low: NaN,
-          close: NaN,
-          quantity: NaN,
-        },
-      };
-      let values = groupedData[i];
-      if (values) {
-        let ohlc: OHLC = {
-          open: values.price[0],
-          high: Math.max(...values.price),
-          low: Math.min(...values.price),
-          close: values.price[values.price.length - 1],
-          quantity: values.quantity.reduce((a, b) => a + b, 0),
-        };
-        datapoint.ohlc = ohlc;
-        result[i] = datapoint;
-      }
+    // const keys = Object.keys(groupedData).map((k) => Number(k));
+    // const min = Math.min(...keys);
+    // const max = Math.max(...keys);
+    // for (let i = min; i <= max; i++) {
+    //     let datapoint: DataPoint = {
+    //         time: i * intervalMs,
+    //         ohlc: {
+    //             open: NaN,
+    //             high: NaN,
+    //             low: NaN,
+    //             close: NaN,
+    //             quantity: NaN,
+    //         },
+    //     };
+    //     let values = groupedData[i];
+    //     if (values) {
+    //         let ohlc: OHLC = {
+    //             open: values.price[0],
+    //             high: Math.max(...values.price),
+    //             low: Math.min(...values.price),
+    //             close: values.price[values.price.length - 1],
+    //             quantity: values.quantity.reduce((a, b) => a + b, 0),
+    //         };
+    //         datapoint.ohlc = ohlc;
+    //         result[i] = datapoint;
+    //     }
+    // }
+
+    /*only add datapoint if there is data*/
+    //iterate through groupedData
+    for (let key in groupedData) {
+        let values = groupedData[key];
+        if (values) {
+            let ohlc: OHLC = {
+                open: values.price[0],
+                high: Math.max(...values.price),
+                low: Math.min(...values.price),
+                close: values.price[values.price.length - 1],
+                quantity: values.quantity.reduce((a, b) => a + b, 0),
+            };
+            const datapoint: DataPoint = {
+                time: parseInt(key) * intervalMs,
+                ohlc: ohlc,
+            };
+            result[parseInt(key)] = datapoint;
+        }
     }
     return result;
-  }
+}
 
 
 export async function GET(request: Request): Promise<Response> {
@@ -84,19 +104,25 @@ export async function GET(request: Request): Promise<Response> {
     })
 
     // let orders: DataPoint[] = []
-    for(let d of data1){
+    for (let d of data1) {
         d = d.toJSON()
-        let i = Math.floor(d['time']/interval)
-        if(agg[i]){
-            if (agg[i].order){
+        let i = Math.floor(d['time'] / interval)
+        if (agg.hasOwnProperty(i)) {
+            if (agg[i].order) {
                 agg[i].order?.push(d)
-            }else{
+            } else {
                 agg[i].order = [d]
             }
-        }else{
+        } else {
             agg[i] = {
-                time: i,
-
+                time: i * interval,
+                ohlc: {
+                    open: NaN,
+                    high: NaN,
+                    low: NaN,
+                    close: NaN,
+                    quantity: NaN,
+                },
                 order: [d]
             }
         }

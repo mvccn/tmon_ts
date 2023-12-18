@@ -7,6 +7,8 @@ import {
     Square,
     Triangle,
 } from "react-financial-charts";
+const SELL_COLOR = '#ec3939';
+const BUY_COLOR = '#3981ec';
 
 export interface OrderSeriesProps {
     /**
@@ -50,18 +52,23 @@ export class OrderSeries extends React.Component<OrderSeriesProps> {
             // const { marker } = point;
             // marker.drawOnCanvas({ ...marker.defaultProps, ...this.props.markerProps }, point, ctx);
             // ctx.fillStyle = "green";
-            this.drawBuySell(ctx, point.x, point.y, 10, point.side);
+            if(point.type=='order'){
+                this.drawBuySell(ctx, point.x, point.y, 10, point.side);
+            }else if(point.type=='trade'){
+                this.drawTrade(ctx, point.x, point.y, 10, point.side, point.price);
+            }
         });
 
     }
 
     private readonly drawBuySell = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, side: string) => {
-        // let height = direction=='up'? width / 2: -width / 2;
         let height = width / 3;
         if (side == 'BUY') {
-            ctx.strokeStyle = "green";
+            ctx.strokeStyle = BUY_COLOR;
+            ctx.fillStyle = BUY_COLOR;
         } else {
-            ctx.strokeStyle = "red";
+            ctx.strokeStyle = SELL_COLOR;
+            ctx.fillStyle = SELL_COLOR;
             height = -height;
         }
         ctx.beginPath();
@@ -70,9 +77,31 @@ export class OrderSeries extends React.Component<OrderSeriesProps> {
         ctx.lineTo(x + width / 2, y + height); // Bottom right vertex
         ctx.closePath();
         // You can use fill() or stroke() depending on whether you want the triangle filled or just outlined.
-        ctx.stroke(); // Fills the triangle
+        ctx.fill(); // Fills the triangle
+        // ctx.fillText("buy",x,y);
+        // ctx.fillRect(x,y,5,2);
         // ctx.stroke(); // Only outlines the triangle
     }
+
+    private readonly drawTrade = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, side: string, price: number) => {
+        // let height = direction=='up'? width / 2: -width / 2;
+        let height = width / 3;
+        if(price ==0){
+            ctx.fillStyle = BUY_COLOR;
+            ctx.fillText("close",x,y);
+        }else if (side == 'BUY') {
+            ctx.strokeStyle = BUY_COLOR;
+            ctx.fillStyle = BUY_COLOR;
+            ctx.fillText("B",x,y);
+        } else {
+            ctx.strokeStyle = SELL_COLOR;
+            ctx.fillStyle = SELL_COLOR;
+            // height = -height;
+            ctx.fillText("S",x,y);
+        }
+    }
+
+
 
     private readonly getPoints = (moreProps: {
         xAccessor: (data: any) => number | Date;
@@ -98,12 +127,18 @@ export class OrderSeries extends React.Component<OrderSeriesProps> {
                 }
                 const xValue = xAccessor(d);
                 const x = xScale(xValue);
+    
                 return yValue.map(
                     (order: any) => {
+                        // if (order.type == 'trade'){
+                        //     console.log("trade: ", order.price)
+                        // }
                         return {
                             x: x,
                             y: yScale(order.price),
                             side: order.side,
+                            type: order.type,
+                            quantity: order.quantity,
                         }
                     })
             })
@@ -112,81 +147,5 @@ export class OrderSeries extends React.Component<OrderSeriesProps> {
             .flat()
 
 
-    }
-
-    private readonly drawOnCanvas1 = (ctx: CanvasRenderingContext2D, moreProps: any) => {
-        const points = this.getMarkers(moreProps);
-
-        const { markerProps } = this.props;
-
-        const nest = group(
-            points,
-            (d) => d.fillStyle,
-            (d) => d.strokeStyle,
-        );
-
-        nest.forEach((fillValues, fillKey) => {
-            if (fillKey !== "none") {
-                ctx.fillStyle = fillKey;
-            }
-
-            fillValues.forEach((strokeValues) => {
-                strokeValues.forEach((point) => {
-                    const { marker } = point;
-                    marker.drawOnCanvas({ ...marker.defaultProps, ...markerProps, fillStyle: fillKey }, point, ctx);
-                });
-            });
-        });
-    };
-
-    private readonly getMarkers = (moreProps: {
-        xAccessor: (data: any) => number | Date;
-        xScale: ScaleContinuousNumeric<number, number> | ScaleTime<number, number>;
-        chartConfig: any;
-        plotData: any[];
-    }) => {
-        const { yAccessor, markerProvider, markerProps } = this.props;
-
-        const {
-            xAccessor,
-            xScale,
-            chartConfig: { yScale },
-            plotData,
-        } = moreProps;
-
-        let { marker: Marker } = this.props;
-        if (!(markerProvider || Marker)) {
-            throw new Error("required prop, either marker or markerProvider missing");
         }
-
-        return plotData
-            .map((d: any) => {
-                const yValue = yAccessor(d);
-                if (yValue === undefined) {
-                    return undefined;
-                }
-
-                const xValue = xAccessor(d);
-
-                if (markerProvider) {
-                    Marker = markerProvider(d);
-                }
-
-                const mProps = { ...Marker.defaultProps, ...markerProps };
-
-                const fill = functor(mProps.fillStyle);
-                const stroke = functor(mProps.strokeStyle);
-
-                return {
-                    x: xScale(xValue),
-                    y: yScale(yValue),
-                    fillStyle: fill(d),
-                    strokeStyle: stroke(d),
-                    datum: d,
-                    marker: Marker,
-                };
-            })
-            .filter((marker) => marker !== undefined)
-            .map((marker) => marker!);
-    };
-}
+    }

@@ -47,13 +47,13 @@ import { OHLCSeries } from './series/OHLCSeries';
 //   quantity: number;
 //   time: number;
 // }
-
+const MINIMUM_PRICE: number = 1;
 
 interface Props {
   apiUrl?: string; // URL to fetch chart data from
 }
 
-const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
+const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => {
   const [chartData, setChartData] = useState<DataPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   // const [chartData, setChartData] = useState({});
@@ -76,7 +76,13 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
         setIsLoading(false);
       }
     };
-    fetchData();
+    // fetchData();
+    // Set up the interval
+    const interval = setInterval(() => {
+      fetchData();
+    }, 1000);
+    // Clean up the interval
+    return () => clearInterval(interval);
   }, [apiUrl]);
 
 
@@ -139,17 +145,26 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
     return format(date) + "." + String(milliseconds).padStart(3, '0'); // Adding milliseconds
   };
   const barChartExtents = (data: DataPoint): number => {
-    return data.ohlc.quantity;
+    return data.ohlc?.quantity;
   };
 
+  const assetExtents = (data: DataPoint): number => {
+    return data.order.asset;
+  }
+
+  /*this is for price data range to be scaled properly*/ 
   const candleChartExtents = (data: DataPoint): [number, number] => {
-    return [data.ohlc.high, data.ohlc.low];
+    let prices =[data.ohlc?.high, data.ohlc?.low]
+    if(data.order){
+      prices = prices.concat(data.order.map(d=> d.price));
+    }
+    prices = prices.filter(d=>d!==undefined).filter(d=>d>MINIMUM_PRICE); //filter out undefined and small values
+    return [Math.max(...prices), Math.min(...prices)];
   };
 
-  const yEdgeIndicator = (data: DataPoint): number => {
-    return data.ohlc.close;
+  const yEdgeIndicator = (data: DataPoint): number | undefined => {
+    return data.ohlc ? data.ohlc.close : undefined;
   };
-
   const volumeColor = (data: DataPoint): string => {
     return data.ohlc.close > data.ohlc.open
       ? "rgba(38, 166, 154, 0.3)"
@@ -169,8 +184,8 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
   //   // if data.
   // }; 
 
-  const volumeSeries = (data: DataPoint): number => {
-    return data.ohlc.quantity || 0;
+  const volumeSeries = (data: DataPoint): number | undefined => {
+    return data.ohlc ? data.ohlc.quantity : undefined;
   };
 
   const openCloseColor = (data: DataPoint): string => {
@@ -203,15 +218,17 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
         <XAxis showGridLines showTickLabel={false} />
         <YAxis showGridLines tickFormat={pricesDisplayFormat} />
         <OHLCSeries width={3} />
-  
+
         <OrderSeries
-            // yAccessor={(d) => d.order} 
-            marker = {Triangle}
-            markerProps = {{ width: 8, 
-                              direction:"top", 
-                              stroke: "#2ca02c",
-                              fill: "#2ca02c" }}  
-        /> 
+          // yAccessor={(d) => d.order} 
+          marker={Triangle}
+          markerProps={{
+            width: 8,
+            direction: "top",
+            stroke: "#2ca02c",
+            fill: "#2ca02c"
+          }}
+        />
         {/* <OrderSeries yAccessor={(d) => d.order} /> */}
         <MouseCoordinateY
           rectWidth={margin.right}
@@ -249,7 +266,7 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
       <Chart
         id={4}
         height={elderRayHeight}
-        yExtents={[0, elder.accessor()]}
+        yExtents={assetExtents}
         origin={elderRayOrigin}
         padding={{ top: 8, bottom: 8 }}
       >
@@ -262,11 +279,12 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=500' }) => {
           displayFormat={pricesDisplayFormat}
         />
 
-        <ElderRaySeries yAccessor={elder.accessor()} />
+        {/* <ElderRaySeries yAccessor={elder.accessor()} /> */}
+        <LineSeries yAccessor={assetExtents} strokeStyle={'#2596be'} connectNulls={true}/>
 
         <SingleValueTooltip
-          yAccessor={elder.accessor()}
-          yLabel="Elder Ray"
+          yAccessor={assetExtents}
+          yLabel="Account"
           yDisplayFormat={(d: any) =>
             `${pricesDisplayFormat(d.bullPower)}, ${pricesDisplayFormat(
               d.bearPower
