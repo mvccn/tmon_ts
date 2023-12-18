@@ -76,14 +76,26 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => 
         setIsLoading(false);
       }
     };
-    // fetchData();
+    fetchData();
     // Set up the interval
-    const interval = setInterval(() => {
-      fetchData();
-    }, 1000);
+    // const interval = setInterval(() => {
+    //   fetchData();
+    // }, 1000);
     // Clean up the interval
-    return () => clearInterval(interval);
+    // return () => clearInterval(interval);
   }, [apiUrl]);
+
+  // const onKeyPress=(e)=>{
+  //   const keyCode = e.which;
+  //   console.log("keycode pressed:" + keyCode);
+  //   switch (keyCode) {
+  //     case 32: {
+  //       const { updateInterval } = this.props;
+  //       this.interval = setInterval(this.update_lastbar, updateInterval);
+  //       break;
+  //     }
+  //   }
+  // }
 
 
   const ScaleProvider = discontinuousTimeScaleProviderBuilder().inputDateAccessor(
@@ -130,11 +142,13 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => 
 
   const gridHeight = height - margin.top - margin.bottom;
 
-  const elderRayHeight = 100;
-  const elderRayOrigin = (_: any, h: number) => [0, h - elderRayHeight];
+  const BalanceHeight = 80;
+  const BalanceOrigin = (_: any, h: number) => [0, h - BalanceHeight];
+  const assetChartHeight = 80;
+  const assetChartOrigin = (_: any, h: number) => [0, h - assetChartHeight - BalanceHeight];
   const barChartHeight = gridHeight / 4;
-  const barChartOrigin = (_: any, h: number) => [0, h - barChartHeight - elderRayHeight];
-  const chartHeight = gridHeight - elderRayHeight;
+  const barChartOrigin = (_: any, h: number) => [0, h - barChartHeight - BalanceHeight - assetChartHeight];
+  const chartHeight = gridHeight - BalanceHeight - assetChartHeight;
 
   const dateTimeFormat = "%b%d %H:%M:%S";
   // const timeDisplayFormat = timeFormat(dateTimeFormat);
@@ -148,17 +162,35 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => 
     return data.ohlc?.quantity;
   };
 
+  //@ts-ignore
   const assetExtents = (data: DataPoint): number => {
-    return data.order.asset;
+    if (data.order) {
+      return data.order[data.order.length - 1].asset;
+    }
   }
 
-  /*this is for price data range to be scaled properly*/ 
-  const candleChartExtents = (data: DataPoint): [number, number] => {
-    let prices =[data.ohlc?.high, data.ohlc?.low]
-    if(data.order){
-      prices = prices.concat(data.order.map(d=> d.price));
+  const assetFill = (data: DataPoint):string => {
+    if(!data.order){return  '#d62728'; }
+    if (data.order[data.order.length - 1].asset>0 ){
+      return '#2ca02c';
     }
-    prices = prices.filter(d=>d!==undefined).filter(d=>d>MINIMUM_PRICE); //filter out undefined and small values
+    return '#d62728';
+  }
+
+
+  const balanceExtents = (data: DataPoint): number => {
+    if (data.order) {
+      return data.order[data.order.length - 1].balance;
+    }
+  }
+
+  /*this is for price data range to be scaled properly*/
+  const candleChartExtents = (data: DataPoint): [number, number] => {
+    let prices = [data.ohlc?.high, data.ohlc?.low]
+    if (data.order) {
+      prices = prices.concat(data.order.map(d => d.price));
+    }
+    prices = prices.filter(d => d !== undefined).filter(d => d > MINIMUM_PRICE); //filter out undefined and small values
     return [Math.max(...prices), Math.min(...prices)];
   };
 
@@ -265,9 +297,9 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => 
       </Chart>
       <Chart
         id={4}
-        height={elderRayHeight}
-        yExtents={assetExtents}
-        origin={elderRayOrigin}
+        height={BalanceHeight}
+        yExtents={balanceExtents}
+        origin={BalanceOrigin}
         padding={{ top: 8, bottom: 8 }}
       >
         <XAxis showGridLines gridLinesStrokeStyle="#e0e3eb" />
@@ -280,16 +312,48 @@ const ReactChart: React.FC<Props> = ({ apiUrl = '/api/db/combined?n=5000' }) => 
         />
 
         {/* <ElderRaySeries yAccessor={elder.accessor()} /> */}
-        <LineSeries yAccessor={assetExtents} strokeStyle={'#2596be'} connectNulls={true}/>
+        <LineSeries yAccessor={balanceExtents} strokeStyle={'#2596be'} connectNulls={true} />
+        {/* <LineSeries yAccessor={assetExtents} strokeStyle={'#2ca02c'} connectNulls={true}/> */}
+
+        <SingleValueTooltip
+          yAccessor={balanceExtents}
+          yLabel="Balance"
+          // yDisplayFormat={(d: any) =>
+          //   `${pricesDisplayFormat(d.bullPower)}, ${pricesDisplayFormat(
+          //     d.bearPower
+          //   )}`
+          // }
+          origin={[8, 16]}
+        />
+      </Chart>
+      <Chart
+        id={5}
+        height={assetChartHeight}
+        yExtents={assetExtents}
+        origin={assetChartOrigin}
+        padding={{ top: 8, bottom: 8 }}
+      >
+        <XAxis showTickLabel={false} showGridLines gridLinesStrokeStyle="#e0e3eb" />
+        <YAxis ticks={4} tickFormat={pricesDisplayFormat} />
+
+        {/* <MouseCoordinateX displayFormat={timeFormatwithMilli} /> */}
+        <MouseCoordinateY
+          rectWidth={margin.right}
+          displayFormat={pricesDisplayFormat}
+        />
+
+        {/* <ElderRaySeries yAccessor={elder.accessor()} /> */}
+        {/* <BarSeries yAccessor={assetExtents} strokeStyle={'#2596be'}/> */}
+        <BarSeries baseAt={(xScale, yScale, d) => yScale(0)} yAccessor={assetExtents} fillStyle={assetFill}/>
 
         <SingleValueTooltip
           yAccessor={assetExtents}
-          yLabel="Account"
-          yDisplayFormat={(d: any) =>
-            `${pricesDisplayFormat(d.bullPower)}, ${pricesDisplayFormat(
-              d.bearPower
-            )}`
-          }
+          yLabel="Asset"
+          // yDisplayFormat={(d: any) =>
+          //   `${pricesDisplayFormat(d.bullPower)}, ${pricesDisplayFormat(
+          //     d.bearPower
+          //   )}`
+          // }
           origin={[8, 16]}
         />
       </Chart>
